@@ -174,7 +174,8 @@ function populateSettingsUI(settings) {
     
     if (document.getElementById('set-kepala-sekolah')) document.getElementById('set-kepala-sekolah').value = settings.KepalaSekolah || '';
     if (document.getElementById('set-logo-url')) document.getElementById('set-logo-url').value = settings.LogoUrl || '';
-    if (document.getElementById('set-admin-password')) document.getElementById('set-admin-password').value = settings.AdminPassword || '';
+    // Jangan isi password dari server (untuk keamanan)
+    // Biarkan kosong, user hanya isi jika ingin mengubah
 }
 
 function updateConfigVisibility() {
@@ -284,7 +285,6 @@ function renderStudentsTable() {
                 <td>${s.NIS}</td>
                 <td>${s.NamaLengkap}</td>
                 <td>${s.Jenis_Kelamin}</td>
-                <td>${s.Kelas || '-'}</td>
                 <td>${s.TempatLahir || '-'}, ${formatDateIndo(s.Tanggal_Lahir)}</td>
                 <td>
                     <div style="display: flex; gap: 5px;">
@@ -498,14 +498,20 @@ function saveConfig() {
         Tanggal: document.getElementById('set-tanggal').value,
         KepalaSekolah: document.getElementById('set-kepala-sekolah').value,
         LogoUrl: document.getElementById('set-logo-url').value,
-        AdminPassword: document.getElementById('set-admin-password').value || state.settings.AdminPassword,
         ApiUrl: url
     };
 
+    // Hanya kirim password jika diisi (untuk mengubah password)
+    const newPassword = document.getElementById('set-admin-password').value;
+    if (newPassword && newPassword.trim() !== '') {
+        settings.AdminPassword = newPassword.trim();
+    }
+
     API.request('updateSettings', {}, { settings }).then(res => {
         if (res && res.success) {
-            state.settings = settings;
-            alert('Konfigurasi berhasil disimpan.');
+            state.settings = { ...state.settings, ...settings };
+            alert('Konfigurasi berhasil disimpan.' + (newPassword ? ' Password admin telah diubah.' : ''));
+            document.getElementById('set-admin-password').value = ''; // Clear password field
             toggleConfig();
         }
     });

@@ -61,8 +61,17 @@ function doPost(e) {
 }
 
 function handleLoginAdmin(password) {
-  const settings = handleGetSettings();
-  const adminPass = settings.AdminPassword || CONFIG.ADMIN_PASSWORD;
+  const sheet = getSettingsSheet();
+  const data = sheet.getDataRange().getDisplayValues();
+  let adminPass = CONFIG.ADMIN_PASSWORD;
+  
+  // Cari password admin terbaru dari sheet Settings
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === 'AdminPassword') {
+      adminPass = data[i][1];
+      break;
+    }
+  }
   
   if (password === adminPass.toString()) {
     return responseJSON({ success: true, role: 'admin' });
@@ -245,7 +254,13 @@ function handleGetSettings() {
   const data = sheet.getDataRange().getDisplayValues();
   const settings = {};
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0]) settings[data[i][0]] = data[i][1];
+    if (data[i][0]) {
+      settings[data[i][0]] = data[i][1];
+    }
+  }
+  // Jangan kembalikan password admin ke frontend untuk keamanan
+  if (settings.AdminPassword) {
+    delete settings.AdminPassword;
   }
   return responseJSON(settings);
 }

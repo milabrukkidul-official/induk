@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buku Induk Siswa - Database</title>
+    <link rel="icon" type="image/png" href="https://i.ibb.co.com/KjmVNfP3/LOGO-MI-LABRUK-MINM.png">
     <link rel="stylesheet" href="css/style.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -34,6 +35,9 @@
                 <div id="admin-login" class="hidden">
                     <button class="btn btn-secondary" onclick="backToSelection()"
                         style="margin-bottom: 1rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">← Kembali</button>
+                    <div style="text-align: center; margin-bottom: 1.5rem;">
+                        <img src="https://i.ibb.co.com/KjmVNfP3/LOGO-MI-LABRUK-MINM.png" alt="Logo Admin" style="max-width: 120px; height: auto; border-radius: 8px;">
+                    </div>
                     <h2>Admin Login</h2>
                     <form onsubmit="handleLogin(event, 'admin')">
                         <div class="form-group">
@@ -123,7 +127,7 @@
                 <div class="stats-grid">
                     <div class="stat-card">
                         <h3>Total Siswa</h3>
-                        <div class="value" id="total-students">0</div>
+                        <div class="value" id="total-students" style="color: #ff8c00;">0</div>
                     </div>
                     <div class="stat-card">
                         <h3>Laki-laki (L)</h3>
@@ -178,7 +182,6 @@
                                 <th>NIS</th>
                                 <th>Nama Lengkap</th>
                                 <th>L/P</th>
-                                <th>Kelas</th>
                                 <th>Tempat, Tgl Lahir</th>
                                 <th>Aksi</th>
                             </tr>
