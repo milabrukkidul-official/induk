@@ -11,7 +11,7 @@ const DEFAULT_SETTINGS = {
     Kota: 'Lumajang',
     Tanggal: new Date().toISOString().split('T')[0],
     KepalaSekolah: 'SAHRONI, S.Pd.',
-    LogoUrl: 'https://via.placeholder.com/80',
+    LogoUrl: 'https://i.ibb.co.com/KjmVNfP3/LOGO-MI-LABRUK-MINM.png',
     ApiUrl: ''
 };
 
@@ -20,6 +20,7 @@ let state = {
     user: JSON.parse(localStorage.getItem('user')) || null,
     view: localStorage.getItem('active_view') || 'dashboard',
     students: [],
+    allStudents: [], // Cache untuk seluruh data
     total: 0,
     page: 1,
     limit: 20,
@@ -33,16 +34,16 @@ function formatDateIndo(dateStr) {
     if (!dateStr || dateStr === '-') return '-';
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return dateStr;
-    
+
     const months = [
         "Januari", "Februari", "Maret", "April", "Mei", "Juni",
         "Juli", "Agustus", "September", "Oktober", "November", "Desember"
     ];
-    
+
     const day = date.getDate().toString().padStart(2, '0');
     const month = months[date.getMonth()];
     const year = date.getFullYear();
-    
+
     return `${day} ${month} ${year}`;
 }
 
@@ -55,6 +56,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // Load local config
     document.getElementById('api-url').value = API.getUrl();
+    // Update Sidebar Logo
+    const sidebarLogo = document.getElementById('sidebar-logo');
+    if (sidebarLogo) {
+        sidebarLogo.src = state.settings.LogoUrl || 'https://via.placeholder.com/150x50?text=LOGO';
+    }
+
     updateConfigVisibility();
 });
 
@@ -65,7 +72,7 @@ function checkAuth() {
     } else {
         authView.classList.add('hidden');
         document.getElementById('current-user').innerText = `Logged in as: ${state.user.role === 'admin' ? 'Admin' : state.user.student.NamaLengkap}`;
-        
+
         // Hide admin-only elements if student
         if (state.user.role !== 'admin') {
             document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
@@ -108,14 +115,14 @@ async function loadSettings() {
     populateSettingsUI(state.settings);
 
     if (!API.getUrl()) return;
-    
+
     try {
         const res = await API.request('getSettings');
         if (res) {
             // Gabungkan hasil API dengan default (untuk jaga-jaga jika ada field kosong di API)
             state.settings = { ...DEFAULT_SETTINGS, ...res };
             populateSettingsUI(state.settings);
-            
+
             // Sinkronkan API URL dari sheet jika ada dan berbeda
             if (res.ApiUrl && res.ApiUrl !== API.getUrl()) {
                 API.setUrl(res.ApiUrl);
@@ -151,11 +158,11 @@ function updateConfigVisibility() {
 async function checkConnection() {
     const url = document.getElementById('api-url').value;
     if (!url) return alert('Masukkan URL terlebih dahulu');
-    
+
     // Temporarily set URL to test
     const oldUrl = API.getUrl();
     API.setUrl(url);
-    
+
     const res = await API.request('getSettings');
     if (res) {
         alert('Koneksi Berhasil! Data pengaturan ditemukan.');
@@ -166,21 +173,53 @@ async function checkConnection() {
     }
 }
 
-async function loadStudents() {
-    state.loading = true;
-    const res = await API.request('getStudents', { 
-        page: state.page, 
-        limit: state.limit, 
-        q: state.search 
-    });
-    state.loading = false;
+async function loadStudents(forceRefresh = false) {
+    if (forceRefresh) state.allStudents = [];
 
-    if (res) {
-        state.students = res.data;
-        state.total = res.total;
-        renderStudentsTable();
-        updatePagination(res.totalPages);
+    if (state.allStudents.length === 0) {
+        state.loading = true;
+        try {
+            const res = await API.request('getStudents', { limit: 10000 });
+            if (res && res.data) {
+                state.allStudents = res.data;
+            }
+        } catch (error) {
+            console.error('Failed to load students:', error);
+        } finally {
+            state.loading = false;
+        }
     }
+
+    applyFiltersAndRender();
+}
+
+function applyFiltersAndRender() {
+    // 1. Filtering secara lokal
+    let filtered = state.allStudents;
+    if (state.search) {
+        const q = state.search.toLowerCase();
+        filtered = state.allStudents.filter(s =>
+            s.NamaLengkap.toLowerCase().includes(q) ||
+            s.NIS.toString().includes(q) ||
+            (s.Kelas && s.Kelas.toLowerCase().includes(q))
+        );
+    }
+
+    // 2. Update Total & Pagination info
+    const total = filtered.length;
+    const totalPages = Math.ceil(total / state.limit) || 1;
+
+    // Pastikan halaman tidak out of bounds
+    if (state.page > totalPages) state.page = totalPages;
+    if (state.page < 1) state.page = 1;
+
+    // 3. Slicing untuk halaman aktif
+    const offset = (state.page - 1) * state.limit;
+    state.students = filtered.slice(offset, offset + state.limit);
+
+    // 4. Render
+    renderStudentsTable();
+    updatePagination(totalPages);
 }
 
 function renderStudentsTable() {
@@ -219,27 +258,30 @@ function updatePagination(totalPages) {
 
 function goToPage(dir) {
     const totalPages = parseInt(document.getElementById('total-pages').innerText);
+
     if (dir === 'first') state.page = 1;
+    else if (dir === 'last') state.page = totalPages;
     else if (dir === 'prev') state.page = Math.max(1, state.page - 1);
     else if (dir === 'next') state.page = Math.min(totalPages, state.page + 1);
-    else if (dir === 'last') state.page = totalPages;
-    
-    loadStudents();
+    else if (dir === 'fast-prev') state.page = Math.max(1, state.page - 10);
+    else if (dir === 'fast-next') state.page = Math.min(totalPages, state.page + 10);
+
+    applyFiltersAndRender();
 }
 
-function changeLimit() {
-    state.limit = document.getElementById('limit-select').value;
+function changeLimit(val) {
+    state.limit = parseInt(val);
     state.page = 1;
-    loadStudents();
+    applyFiltersAndRender();
 }
 
 let searchTimeout;
-function debounceSearch() {
+function debounceSearch(val) {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-        state.search = document.getElementById('search-input').value;
+        state.search = val;
         state.page = 1;
-        loadStudents();
+        applyFiltersAndRender();
     }, 500);
 }
 
@@ -287,7 +329,7 @@ function logout() {
 function showView(view) {
     state.view = view;
     localStorage.setItem('active_view', view);
-    
+
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
     // Find and activate the link
     const links = document.querySelectorAll('.nav-link');
@@ -296,12 +338,12 @@ function showView(view) {
             l.classList.add('active');
         }
     });
-    
+
     document.getElementById('dashboard-view').classList.add('hidden');
     document.getElementById('students-view').classList.add('hidden');
     const targetView = document.getElementById(`${view}-view`);
     if (targetView) targetView.classList.remove('hidden');
-    
+
     refreshData();
     if (window.innerWidth <= 768) {
         const sidebar = document.getElementById('sidebar');
@@ -326,7 +368,7 @@ function toggleConfig() {
 function saveConfig() {
     const url = document.getElementById('api-url').value;
     API.setUrl(url);
-    
+
     // Save signature settings
     const settings = {
         Kota: document.getElementById('set-kota').value,
@@ -335,7 +377,7 @@ function saveConfig() {
         LogoUrl: document.getElementById('set-logo-url').value,
         ApiUrl: url
     };
-    
+
     API.request('updateSettings', {}, { settings }).then(res => {
         if (res && res.success) {
             state.settings = settings;
@@ -368,12 +410,12 @@ async function handleStudentSubmit(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const student = Object.fromEntries(formData.entries());
-    
+
     const res = await API.request('upsertStudent', {}, { student });
     if (res && res.success) {
         alert('Data berhasil disimpan');
         closeStudentModal();
-        refreshData();
+        loadStudents(true); // Force refresh cache
     }
 }
 
@@ -382,7 +424,7 @@ function editStudent(nis) {
     if (student) {
         document.getElementById('modal-title').innerText = 'Edit Siswa';
         const form = document.getElementById('student-form');
-        form.reset(); 
+        form.reset();
         switchModalTab('tab-diri');
         for (let key in student) {
             if (form.elements[key]) {
@@ -410,7 +452,7 @@ function printStudent(nis) {
 
     const printContent = document.getElementById('print-content');
     let html = "";
-    
+
     const categories = [
         {
             title: "I. KETERANGAN TENTANG DIRI SISWA",
@@ -494,12 +536,12 @@ function printStudent(nis) {
         });
         html += `</table>`;
     });
-    
+
     printContent.innerHTML = html;
 
     // Footer & Header info
     document.getElementById('print-logo').src = state.settings.LogoUrl || 'https://via.placeholder.com/80';
-    
+
     const printFoto = document.getElementById('print-foto');
     if (student.Foto_URL) {
         printFoto.src = student.Foto_URL;
@@ -542,7 +584,7 @@ async function handleExcelUpload(e) {
 
         if (data.length > 0) {
             if (!confirm(`Upload ${data.length} data siswa?`)) return;
-            
+
             const res = await API.request('bulkUpload', {}, { students: data });
             if (res && res.success) {
                 alert(`Berhasil upload ${res.count} siswa.`);

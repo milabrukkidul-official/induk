@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 </head>
+
 <body>
     <div id="app">
         <!-- Auth View -->
@@ -15,13 +17,16 @@
             <div class="auth-card">
                 <div id="login-selection">
                     <h2>Buku Induk Siswa</h2>
-                    <p style="text-align: center; margin-bottom: 2rem; color: var(--text-muted);">Silakan pilih jenis login</p>
-                    <button class="btn btn-primary btn-full" onclick="showLogin('admin')" style="margin-bottom: 1rem;">Login Admin</button>
+                    <p style="text-align: center; margin-bottom: 2rem; color: var(--text-muted);">Silakan pilih jenis
+                        login</p>
+                    <button class="btn btn-primary btn-full" onclick="showLogin('admin')"
+                        style="margin-bottom: 1rem;">Login Admin</button>
                     <button class="btn btn-secondary btn-full" onclick="showLogin('student')">Login Siswa</button>
                 </div>
 
                 <div id="admin-login" class="hidden">
-                    <button class="btn btn-secondary" onclick="backToSelection()" style="margin-bottom: 1rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">← Kembali</button>
+                    <button class="btn btn-secondary" onclick="backToSelection()"
+                        style="margin-bottom: 1rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">← Kembali</button>
                     <h2>Admin Login</h2>
                     <form onsubmit="handleLogin(event, 'admin')">
                         <div class="form-group">
@@ -30,11 +35,14 @@
                         </div>
                         <button type="submit" class="btn btn-primary btn-full">Login</button>
                     </form>
-                    <p id="login-config-link" style="text-align: center; margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted); cursor: pointer;" onclick="toggleConfig()">Pengaturan API</p>
+                    <p id="login-config-link"
+                        style="text-align: center; margin-top: 1rem; font-size: 0.8rem; color: var(--text-muted); cursor: pointer;"
+                        onclick="toggleConfig()">Pengaturan API</p>
                 </div>
 
                 <div id="student-login" class="hidden">
-                    <button class="btn btn-secondary" onclick="backToSelection()" style="margin-bottom: 1rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">← Kembali</button>
+                    <button class="btn btn-secondary" onclick="backToSelection()"
+                        style="margin-bottom: 1rem; padding: 0.25rem 0.5rem; font-size: 0.75rem;">← Kembali</button>
                     <h2>Student Login</h2>
                     <form onsubmit="handleLogin(event, 'student')">
                         <div class="form-group">
@@ -54,8 +62,8 @@
         <!-- Main View -->
         <aside class="sidebar" id="sidebar">
             <div class="brand">
-                <i data-lucide="database"></i>
-                <span>Indoek Siswa</span>
+                <img id="sidebar-logo" src="" alt="Logo"
+                    style="max-width: 100%; max-height: 50px; object-fit: contain;">
             </div>
             <ul class="nav-menu">
                 <li class="nav-item">
@@ -79,7 +87,8 @@
             </ul>
             <div class="user-info" style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: auto;">
                 <p id="current-user" style="font-size: 0.85rem; font-weight: 500;"></p>
-                <a href="#" onclick="logout()" style="color: var(--danger); font-size: 0.85rem; text-decoration: none; display: flex; align-items: center; gap: 8px; margin-top: 0.5rem;">
+                <a href="#" onclick="logout()"
+                    style="color: var(--danger); font-size: 0.85rem; text-decoration: none; display: flex; align-items: center; gap: 8px; margin-top: 0.5rem;">
                     <i data-lucide="log-out" style="width: 14px;"></i> Logout
                 </a>
             </div>
@@ -94,7 +103,7 @@
             <section id="dashboard-view">
                 <h1>Dashboard</h1>
                 <p style="color: var(--text-muted); margin-bottom: 2rem;">Ringkasan data siswa saat ini.</p>
-                
+
                 <div class="stats-grid">
                     <div class="stat-card">
                         <h3>Total Siswa</h3>
@@ -112,13 +121,15 @@
             </section>
 
             <section id="students-view" class="hidden">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
                     <h1>Daftar Siswa</h1>
                     <div class="admin-only" style="display: flex; gap: 0.5rem;">
                         <button class="btn btn-secondary" onclick="document.getElementById('xlsx-upload').click()">
                             <i data-lucide="file-up"></i> Upload XLS
                         </button>
-                        <input type="file" id="xlsx-upload" class="hidden" accept=".xlsx, .xls" onchange="handleExcelUpload(event)">
+                        <input type="file" id="xlsx-upload" class="hidden" accept=".xlsx, .xls"
+                            onchange="handleExcelUpload(event)">
                         <button class="btn btn-primary" onclick="openStudentModal()">
                             <i data-lucide="plus"></i> Tambah Siswa
                         </button>
@@ -126,7 +137,8 @@
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                    <input type="text" id="search-input" placeholder="Cari Nama atau NIS..." style="flex: 1;" oninput="debounceSearch()">
+                    <input type="text" id="search-input" placeholder="Cari Nama atau NIS..." style="flex: 1;"
+                        oninput="debounceSearch()">
                     <select id="limit-select" style="width: 100px;" onchange="changeLimit()">
                         <option value="20">20</option>
                         <option value="50">50</option>
@@ -154,11 +166,22 @@
                 </div>
 
                 <div class="pagination">
-                    <button class="btn btn-secondary" onclick="goToPage('first')"><i data-lucide="chevrons-left"></i></button>
-                    <button class="btn btn-secondary" onclick="goToPage('prev')"><i data-lucide="chevron-left"></i></button>
-                    <span class="page-info">Halaman <span id="current-page">1</span> dari <span id="total-pages">1</span></span>
-                    <button class="btn btn-secondary" onclick="goToPage('next')"><i data-lucide="chevron-right"></i></button>
-                    <button class="btn btn-secondary" onclick="goToPage('last')"><i data-lucide="chevrons-right"></i></button>
+                    <button class="btn btn-secondary" onclick="goToPage('first')" title="Awal"><i
+                            data-lucide="skip-back"></i></button>
+                    <button class="btn btn-secondary" onclick="goToPage('fast-prev')" title="-10 Halaman"><i
+                            data-lucide="chevrons-left"></i></button>
+                    <button class="btn btn-secondary" onclick="goToPage('prev')" title="Sebelumnya"><i
+                            data-lucide="chevron-left"></i></button>
+
+                    <span class="page-info">Halaman <span id="current-page">1</span> dari <span
+                            id="total-pages">1</span></span>
+
+                    <button class="btn btn-secondary" onclick="goToPage('next')" title="Selanjutnya"><i
+                            data-lucide="chevron-right"></i></button>
+                    <button class="btn btn-secondary" onclick="goToPage('fast-next')" title="+10 Halaman"><i
+                            data-lucide="chevrons-right"></i></button>
+                    <button class="btn btn-secondary" onclick="goToPage('last')" title="Akhir"><i
+                            data-lucide="skip-forward"></i></button>
                 </div>
             </section>
         </main>
@@ -171,7 +194,8 @@
                     <label>URL Exec GAS</label>
                     <div style="display: flex; gap: 5px;">
                         <input type="text" id="api-url" placeholder="https://script.google.com/macros/s/.../exec">
-                        <button class="btn btn-secondary" onclick="checkConnection()" title="Cek Koneksi" style="padding: 0.5rem;"><i data-lucide="refresh-cw"></i></button>
+                        <button class="btn btn-secondary" onclick="checkConnection()" title="Cek Koneksi"
+                            style="padding: 0.5rem;"><i data-lucide="refresh-cw"></i></button>
                     </div>
                 </div>
                 <hr style="border: 0; border-top: 1px solid var(--border); margin: 1.5rem 0;">
@@ -207,11 +231,16 @@
                     <button class="btn btn-secondary" onclick="closeStudentModal()"><i data-lucide="x"></i></button>
                 </div>
                 <form id="student-form" onsubmit="handleStudentSubmit(event)">
-                    <div class="modal-tabs" style="display: flex; gap: 1rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); overflow-x: auto; padding-bottom: 0.5rem;">
-                        <a href="javascript:void(0)" onclick="switchModalTab('tab-diri')" class="tab-link active" id="link-tab-diri">Diri</a>
-                        <a href="javascript:void(0)" onclick="switchModalTab('tab-ortu')" class="tab-link" id="link-tab-ortu">Orang Tua</a>
-                        <a href="javascript:void(0)" onclick="switchModalTab('tab-pendidikan')" class="tab-link" id="link-tab-pendidikan">Pendidikan</a>
-                        <a href="javascript:void(0)" onclick="switchModalTab('tab-mutasi')" class="tab-link" id="link-tab-mutasi">Mutasi & Lulus</a>
+                    <div class="modal-tabs"
+                        style="display: flex; gap: 1rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); overflow-x: auto; padding-bottom: 0.5rem;">
+                        <a href="javascript:void(0)" onclick="switchModalTab('tab-diri')" class="tab-link active"
+                            id="link-tab-diri">Diri</a>
+                        <a href="javascript:void(0)" onclick="switchModalTab('tab-ortu')" class="tab-link"
+                            id="link-tab-ortu">Orang Tua</a>
+                        <a href="javascript:void(0)" onclick="switchModalTab('tab-pendidikan')" class="tab-link"
+                            id="link-tab-pendidikan">Pendidikan</a>
+                        <a href="javascript:void(0)" onclick="switchModalTab('tab-mutasi')" class="tab-link"
+                            id="link-tab-mutasi">Mutasi & Lulus</a>
                     </div>
 
                     <div id="tab-diri" class="modal-tab-content">
@@ -288,7 +317,9 @@
                                 <label>Pekerjaan Ayah</label>
                                 <input type="text" name="Pekerjaan_Ayah">
                             </div>
-                            <div class="form-group" style="border-top: 1px solid var(--border); padding-top: 1rem; grid-column: span 2;"></div>
+                            <div class="form-group"
+                                style="border-top: 1px solid var(--border); padding-top: 1rem; grid-column: span 2;">
+                            </div>
                             <div class="form-group">
                                 <label>Nama Ibu</label>
                                 <input type="text" name="Nama_Ibu">
@@ -318,7 +349,9 @@
                                 <label>No Ijazah TK</label>
                                 <input type="text" name="No_Ijazah">
                             </div>
-                            <div class="form-group" style="border-top: 1px solid var(--border); padding-top: 1rem; grid-column: span 2;"></div>
+                            <div class="form-group"
+                                style="border-top: 1px solid var(--border); padding-top: 1rem; grid-column: span 2;">
+                            </div>
                             <div class="form-group">
                                 <label>Diterima di Kelas</label>
                                 <input type="text" name="Kelas">
@@ -356,7 +389,9 @@
                                 <label>NPSN Sekolah Tujuan</label>
                                 <input type="text" name="NPSN_Sekolah_Tujuan">
                             </div>
-                            <div class="form-group" style="border-top: 1px solid var(--border); padding-top: 1rem; grid-column: span 2;"></div>
+                            <div class="form-group"
+                                style="border-top: 1px solid var(--border); padding-top: 1rem; grid-column: span 2;">
+                            </div>
                             <div class="form-group">
                                 <label>Tanggal Lulus</label>
                                 <input type="date" name="Tgl_Lulus">
@@ -388,7 +423,8 @@
 
         <div id="print-area" class="print-only">
             <div class="print-container">
-                <div class="print-header" style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 10px;">
+                <div class="print-header"
+                    style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 10px;">
                     <img id="print-logo" src="" alt="Logo" style="width: 100px; height: 100px; object-fit: contain;">
                     <div style="text-align: center;">
                         <h1 style="margin: 0; font-size: 26px;">BUKU INDUK SISWA</h1>
@@ -420,4 +456,5 @@
         lucide.createIcons();
     </script>
 </body>
+
 </html>

@@ -90,35 +90,43 @@ function handleLoginStudent(nis, password) {
 function handleGetStudents(params) {
   const sheet = getSheet();
   const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  let students = [];
+  if (data.length <= 1) return responseJSON({ data: [], total: 0 });
 
-  for (let i = 1; i < data.length; i++) {
+  const headers = data[0];
+  const students = data.slice(1).map(row => {
     const obj = {};
-    headers.forEach((h, idx) => {
-      obj[h] = data[i][idx];
+    headers.forEach((h, idx) => { obj[h] = row[idx]; });
+    return obj;
+  });
+
+  // Jika request untuk client-side (limit besar dan tanpa search), kirim semua data
+  if (!params.q && (!params.limit || params.limit >= 5000)) {
+    return responseJSON({
+      data: students,
+      total: students.length,
+      page: 1,
+      limit: students.length,
+      totalPages: 1
     });
-    students.push(obj);
   }
 
-  // Filter if search
+  // Fallback untuk server-side filtering/pagination (jika masih digunakan)
+  let filtered = students;
   if (params.q) {
     const q = params.q.toLowerCase();
-    students = students.filter(s => 
-      s.NamaLengkap.toLowerCase().includes(q) || 
-      s.NIS.toString().includes(q)
+    filtered = students.filter(s => 
+      (s.NamaLengkap && s.NamaLengkap.toLowerCase().includes(q)) || 
+      (s.NIS && s.NIS.toString().includes(q))
     );
   }
 
-  const total = students.length;
+  const total = filtered.length;
   const limit = parseInt(params.limit) || 20;
   const page = parseInt(params.page) || 1;
   const offset = (page - 1) * limit;
   
-  const paginated = students.slice(offset, offset + limit);
-
   return responseJSON({
-    data: paginated,
+    data: filtered.slice(offset, offset + limit),
     total: total,
     page: page,
     limit: limit,

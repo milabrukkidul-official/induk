@@ -1,17 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    --primary: #2f81f7;
-    --primary-hover: #58a6ff;
-    --bg-main: #0d1117;
-    --bg-secondary: #161b22;
-    --border: #30363d;
-    --text-main: #c9d1d9;
-    --text-muted: #8b949e;
+    --primary: #00d2ff; /* Water Blue/Cyan */
+    --primary-hover: #00a8cc;
+    --bg-main: #000000; /* Pure Black */
+    --bg-secondary: #0a0a0a; /* Deep Charcoal */
+    --border: #1a1a1a;
+    --text-main: #FFDAB9; /* Peach */
+    --text-muted: #999999;
     --sidebar-width: 260px;
     --header-height: 60px;
-    --success: #238636;
-    --danger: #da3633;
+    --success: #00c853;
+    --danger: #ff3b30; /* Vibrant Red */
 }
 
 * {
@@ -45,6 +45,7 @@ body {
     height: 100vh;
     transition: transform 0.3s ease;
     z-index: 1000;
+    box-shadow: 2px 0 10px rgba(0, 210, 255, 0.05); /* Subtle Water Glow */
 }
 
 .main-content {
@@ -93,7 +94,9 @@ body {
 
 .nav-link.active {
     background-color: var(--primary);
-    color: #fff;
+    color: #000; /* Contrast on primary */
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 210, 255, 0.3);
 }
 
 .nav-link i {
@@ -104,7 +107,7 @@ body {
 .auth-overlay {
     position: fixed;
     inset: 0;
-    background: var(--bg-main);
+    background: radial-gradient(circle at center, #0a0a0a 0%, #000 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -114,11 +117,11 @@ body {
 .auth-card {
     background: var(--bg-secondary);
     padding: 2.5rem;
-    border-radius: 8px;
+    border-radius: 12px;
     border: 1px solid var(--border);
     width: 100%;
     max-width: 400px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    box-shadow: 0 0 30px rgba(0, 210, 255, 0.1);
 }
 
 .auth-card h2 {
@@ -174,7 +177,8 @@ input:focus {
 
 .btn-primary {
     background: var(--primary);
-    color: #fff;
+    color: #000;
+    box-shadow: 0 4px 10px rgba(0, 210, 255, 0.2);
 }
 
 .btn-secondary {
@@ -259,7 +263,13 @@ tr:hover {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     padding: 1.5rem;
-    border-radius: 8px;
+    border-radius: 12px;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--primary);
 }
 
 .stat-card h3 {
