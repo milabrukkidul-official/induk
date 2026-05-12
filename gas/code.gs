@@ -55,6 +55,10 @@ function doPost(e) {
     return handleBulkUpload(data.students);
   } else if (action === 'updateSettings') {
     return handleUpdateSettings(data.settings);
+  } else if (action === 'getStudentExtras') {
+    return handleGetStudentExtras(data.nis);
+  } else if (action === 'saveStudentExtras') {
+    return handleSaveStudentExtras(data.nis, data.extras);
   }
 
   return responseJSON({ error: 'Invalid action' });
@@ -330,4 +334,57 @@ function handleGetStudent(nis) {
 function responseJSON(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ===== FUNGSI UNTUK NILAI, PRESENSI, IJAZAH, PENGHARGAAN =====
+
+function getExtrasSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('Data_Extras');
+  if (!sheet) {
+    sheet = ss.insertSheet('Data_Extras');
+    sheet.appendRow(['NIS', 'DataJSON']);
+  }
+  return sheet;
+}
+
+function handleGetStudentExtras(nis) {
+  const sheet = getExtrasSheet();
+  const data = sheet.getDataRange().getDisplayValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0].toString() === nis.toString()) {
+      try {
+        const extras = JSON.parse(data[i][1]);
+        return responseJSON({ success: true, data: extras });
+      } catch (e) {
+        return responseJSON({ success: true, data: {} });
+      }
+    }
+  }
+  
+  // Return empty structure if not found
+  return responseJSON({ success: true, data: {} });
+}
+
+function handleSaveStudentExtras(nis, extras) {
+  const sheet = getExtrasSheet();
+  const data = sheet.getDataRange().getDisplayValues();
+  const jsonString = JSON.stringify(extras);
+  
+  let rowIndex = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0].toString() === nis.toString()) {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+  
+  if (rowIndex > -1) {
+    sheet.getRange(rowIndex, 2).setValue(jsonString);
+  } else {
+    sheet.appendRow([nis, jsonString]);
+  }
+  
+  return responseJSON({ success: true });
 }

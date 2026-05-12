@@ -45,7 +45,10 @@ const API = {
             return await response.json();
         } catch (error) {
             console.error('API Error:', error);
-            alert('Terjadi kesalahan saat menghubungi API: ' + error.message);
+            // Hanya tampilkan alert untuk aksi yang bukan background fetch
+            if (action !== 'getStudentExtras') {
+                alert('Terjadi kesalahan saat menghubungi API: ' + error.message);
+            }
             return null;
         }
     }

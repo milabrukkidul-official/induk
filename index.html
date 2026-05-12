@@ -464,8 +464,45 @@
                 <div id="details-content" style="margin-top: 1rem;">
                     <!-- Details will be injected here -->
                 </div>
-                <div style="margin-top: 2rem; text-align: right;">
+                <div class="modal-footer-buttons" style="margin-top: 2rem; text-align: right; display: flex; justify-content: flex-end; gap: 1rem;">
                     <button class="btn btn-secondary" onclick="document.getElementById('details-modal').classList.add('hidden')">Tutup</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Extras Modal (Nilai, Presensi, Ijazah, Penghargaan) -->
+        <div id="extras-modal" class="modal-overlay hidden">
+            <div class="modal animate-pop" style="max-width: 900px;">
+                <div class="modal-header">
+                    <h2>Edit Nilai, Presensi, Ijazah & Penghargaan</h2>
+                    <button class="btn btn-secondary" onclick="document.getElementById('extras-modal').classList.add('hidden')">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+                <div id="extras-content" style="margin-top: 1rem;">
+                    <!-- Extras content will be injected here -->
+                </div>
+                <div style="margin-top: 2rem; text-align: right;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('extras-modal').classList.add('hidden')">Tutup</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Print Preview Modal -->
+        <div id="print-modal" class="modal-overlay hidden">
+            <div class="modal animate-pop" style="max-width: 95%; max-height: 90vh;">
+                <div class="modal-header">
+                    <h2>Preview Cetak Buku Induk</h2>
+                    <button class="btn btn-secondary" onclick="document.getElementById('print-modal').classList.add('hidden')">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+                <div id="print-preview-content" style="margin-top: 1rem; max-height: 70vh; overflow-y: auto; background: white; padding: 2rem; color: #000;">
+                    <!-- Print preview will be injected here -->
+                </div>
+                <div style="margin-top: 1rem; text-align: right; display: flex; justify-content: flex-end; gap: 1rem;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('print-modal').classList.add('hidden')">Tutup</button>
+                    <button class="btn btn-primary" onclick="executePrint()"><i data-lucide="printer"></i> Cetak</button>
                 </div>
             </div>
         </div>
