@@ -61,25 +61,62 @@ function doPost(e) {
 }
 
 function handleLoginAdmin(password) {
-  if (password === CONFIG.ADMIN_PASSWORD) {
+  const settings = handleGetSettings();
+  const adminPass = settings.AdminPassword || CONFIG.ADMIN_PASSWORD;
+  
+  if (password === adminPass.toString()) {
     return responseJSON({ success: true, role: 'admin' });
   }
   return responseJSON({ success: false, error: 'Wrong password' });
 }
 
 function handleLoginStudent(nis, password) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = getSheet();
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
+  const data = sheet.getDataRange().getDisplayValues(); // Use display values for initial search
+  const headers = data[0].map(h => h.toString().trim());
+  const tz = ss.getSpreadsheetTimeZone();
+  
   const nisIdx = headers.indexOf('NIS');
   const passIdx = headers.indexOf('Password');
+  const tglIdx = headers.indexOf('Tanggal_Lahir');
+  
+  const inputNis = nis.toString().trim();
+  const inputPass = password.toString().trim();
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][nisIdx].toString() === nis.toString()) {
-      const studentPass = data[i][passIdx] ? data[i][passIdx].toString() : data[i][headers.indexOf('Tanggal_Lahir')].toString();
-      if (studentPass === password.toString()) {
-        const studentObj = {};
-        headers.forEach((h, idx) => { studentObj[h] = data[i][idx]; });
+    // Clean database NIS (remove dots/commas) to match input 4631 vs 4.631
+    let dbNisRaw = data[i][nisIdx].toString().trim();
+    let dbNisClean = dbNisRaw.replace(/[.,\s]/g, '');
+    
+    if (dbNisClean === inputNis || dbNisRaw === inputNis) {
+      let dbPass = data[i][passIdx].toString().trim();
+      
+      if (!dbPass) {
+        let dbTgl = data[i][tglIdx].toString().trim();
+        // Try to convert to Date if it looks like ISO
+        if (dbTgl.includes('T') || dbTgl.includes('Z')) {
+          try {
+            let d = new Date(dbTgl);
+            dbPass = Utilities.formatDate(d, tz, "dd-MM-yyyy");
+          } catch(e) { dbPass = dbTgl; }
+        } else {
+          // Normalize normal date strings (YYYY-MM-DD -> DD-MM-YYYY)
+          let parts = dbTgl.split(/[T ]/)[0].split(/[-/]/);
+          if (parts.length === 3) {
+            if (parts[0].length === 4) {
+              dbPass = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            } else {
+              dbPass = parts.join('-');
+            }
+          } else {
+            dbPass = dbTgl;
+          }
+        }
+      }
+      
+      if (dbPass === inputPass) {
+        const studentObj = rowToObject(data[i], headers);
         return responseJSON({ success: true, role: 'student', student: studentObj });
       }
     }
@@ -87,17 +124,21 @@ function handleLoginStudent(nis, password) {
   return responseJSON({ success: false, error: 'Invalid NIS or password' });
 }
 
+function rowToObject(row, headers) {
+  const obj = {};
+  headers.forEach((h, idx) => {
+    obj[h] = row[idx];
+  });
+  return obj;
+}
+
 function handleGetStudents(params) {
   const sheet = getSheet();
-  const data = sheet.getDataRange().getValues();
+  const data = sheet.getDataRange().getDisplayValues();
   if (data.length <= 1) return responseJSON({ data: [], total: 0 });
 
   const headers = data[0];
-  const students = data.slice(1).map(row => {
-    const obj = {};
-    headers.forEach((h, idx) => { obj[h] = row[idx]; });
-    return obj;
-  });
+  const students = data.slice(1).map(row => rowToObject(row, headers));
 
   // Jika request untuk client-side (limit besar dan tanpa search), kirim semua data
   if (!params.q && (!params.limit || params.limit >= 5000)) {
@@ -136,7 +177,7 @@ function handleGetStudents(params) {
 
 function handleUpsertStudent(student) {
   const sheet = getSheet();
-  const data = sheet.getDataRange().getValues();
+  const data = sheet.getDataRange().getDisplayValues();
   const headers = data[0];
   const nisIdx = headers.indexOf('NIS');
   
@@ -161,7 +202,7 @@ function handleUpsertStudent(student) {
 
 function handleBulkUpload(students) {
   const sheet = getSheet();
-  const data = sheet.getDataRange().getValues();
+  const data = sheet.getDataRange().getDisplayValues();
   const headers = data[0];
   const nisIdx = headers.indexOf('NIS');
   
@@ -186,7 +227,7 @@ function handleBulkUpload(students) {
 
 function handleDeleteStudent(nis) {
   const sheet = getSheet();
-  const data = sheet.getDataRange().getValues();
+  const data = sheet.getDataRange().getDisplayValues();
   const headers = data[0];
   const nisIdx = headers.indexOf('NIS');
   
@@ -201,20 +242,32 @@ function handleDeleteStudent(nis) {
 
 function handleGetSettings() {
   const sheet = getSettingsSheet();
-  const data = sheet.getDataRange().getValues();
+  const data = sheet.getDataRange().getDisplayValues();
   const settings = {};
   for (let i = 1; i < data.length; i++) {
-    settings[data[i][0]] = data[i][1];
+    if (data[i][0]) settings[data[i][0]] = data[i][1];
   }
   return responseJSON(settings);
 }
 
 function handleUpdateSettings(settings) {
   const sheet = getSettingsSheet();
-  sheet.clear();
-  sheet.appendRow(['Key', 'Value']);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  
   for (const key in settings) {
-    sheet.appendRow([key, settings[key]]);
+    let found = false;
+    const value = settings[key];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === key) {
+        sheet.getRange(i + 1, 2).setValue(value);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      sheet.appendRow([key, value]);
+    }
   }
   return responseJSON({ success: true });
 }
@@ -238,7 +291,7 @@ function getSettingsSheet() {
     sheet.appendRow(['Kota', 'Jakarta']);
     sheet.appendRow(['Tanggal', Utilities.formatDate(new Date(), ss.getSpreadsheetTimeZone(), 'yyyy-MM-dd')]);
     sheet.appendRow(['KepalaSekolah', 'Nama Kepala Sekolah, M.Pd']);
-    sheet.appendRow(['ApiUrl', '']);
+    sheet.appendRow(['AdminPassword', CONFIG.ADMIN_PASSWORD]);
     sheet.appendRow(['LogoUrl', 'https://via.placeholder.com/80']);
   }
   return sheet;
@@ -246,14 +299,13 @@ function getSettingsSheet() {
 
 function handleGetStudent(nis) {
   const sheet = getSheet();
-  const data = sheet.getDataRange().getValues();
+  const data = sheet.getDataRange().getDisplayValues();
   const headers = data[0];
   const nisIdx = headers.indexOf('NIS');
   
   for (let i = 1; i < data.length; i++) {
     if (data[i][nisIdx].toString() === nis.toString()) {
-      const obj = {};
-      headers.forEach((h, idx) => { obj[h] = data[i][idx]; });
+      const obj = rowToObject(data[i], headers);
       return responseJSON(obj);
     }
   }

@@ -12,6 +12,13 @@
 
 <body>
     <div id="app">
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="spinner-container">
+                <div class="modern-spinner"></div>
+                <div class="loading-text">Memuat Data...</div>
+            </div>
+        </div>
+        <div class="mobile-overlay" id="mobile-overlay" onclick="toggleSidebar()"></div>
         <!-- Auth View -->
         <div id="auth-view" class="auth-overlay">
             <div class="auth-card">
@@ -50,7 +57,7 @@
                             <input type="text" id="student-nis" placeholder="Masukkan NIS" required>
                         </div>
                         <div class="form-group">
-                            <label>Password (Tgl Lahir: YYYY-MM-DD)</label>
+                            <label>Password (Tgl Lahir: DD-MM-YYYY)</label>
                             <input type="password" id="student-password" placeholder="Masukkan password" required>
                         </div>
                         <button type="submit" class="btn btn-primary btn-full">Login</button>
@@ -66,16 +73,22 @@
                     style="max-width: 100%; max-height: 50px; object-fit: contain;">
             </div>
             <ul class="nav-menu">
-                <li class="nav-item">
+                <li class="nav-item admin-only">
                     <a href="#" class="nav-link active" onclick="showView('dashboard')">
                         <i data-lucide="layout-dashboard"></i>
                         Dashboard
                     </a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item admin-only">
                     <a href="#" class="nav-link" onclick="showView('students')">
                         <i data-lucide="users"></i>
                         Daftar Siswa
+                    </a>
+                </li>
+                <li class="nav-item student-only hidden">
+                    <a href="#" class="nav-link" onclick="showView('profile')">
+                        <i data-lucide="user"></i>
+                        Profil Saya
                     </a>
                 </li>
                 <li class="nav-item admin-only">
@@ -96,8 +109,11 @@
 
         <main class="main-content" id="main-content">
             <header class="mobile-header">
-                <div class="brand" style="margin-bottom: 0;">Indoek</div>
-                <button class="btn btn-secondary" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
+                <button class="btn btn-secondary" style="padding: 0.5rem; border: none; background: transparent;" onclick="toggleSidebar()">
+                    <i data-lucide="menu" style="color: var(--text-main);"></i>
+                </button>
+                <span style="font-weight: 600; color: var(--primary);">Indoek Siswa</span>
+                <div style="width: 32px;"></div> <!-- Spacer for balance -->
             </header>
 
             <section id="dashboard-view">
@@ -107,16 +123,24 @@
                 <div class="stats-grid">
                     <div class="stat-card">
                         <h3>Total Siswa</h3>
-                        <div class="value" id="total-students-count">0</div>
+                        <div class="value" id="total-students">0</div>
                     </div>
                     <div class="stat-card">
-                        <h3>Siswa Laki-laki</h3>
-                        <div class="value" id="male-count">0</div>
+                        <h3>Laki-laki (L)</h3>
+                        <div class="value" id="total-male" style="color: var(--primary);">0</div>
                     </div>
                     <div class="stat-card">
-                        <h3>Siswa Perempuan</h3>
-                        <div class="value" id="female-count">0</div>
+                        <h3>Perempuan (P)</h3>
+                        <div class="value" id="total-female" style="color: #ff69b4;">0</div>
                     </div>
+                </div>
+            </section>
+
+            <section id="profile-view" class="hidden">
+                <h1>Profil Saya</h1>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">Informasi data pribadi Anda.</p>
+                <div id="profile-content">
+                    <!-- Profile injected here -->
                 </div>
             </section>
 
@@ -206,7 +230,11 @@
                 </div>
                 <div class="form-group">
                     <label>Tanggal Tanda Tangan</label>
-                    <input type="date" id="set-tanggal">
+                    <input type="date" id="set-tanggal" onclick="this.showPicker()">
+                </div>
+                <div class="form-group">
+                    <label>Password Admin Baru</label>
+                    <input type="password" id="set-admin-password" placeholder="Ganti password admin">
                 </div>
                 <div class="form-group">
                     <label>Nama Kepala Sekolah</label>
@@ -274,7 +302,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Tanggal Lahir</label>
-                                <input type="date" name="Tanggal_Lahir">
+                                <input type="date" name="Tanggal_Lahir" onclick="this.showPicker()">
                             </div>
                             <div class="form-group">
                                 <label>Agama</label>
@@ -358,11 +386,11 @@
                             </div>
                             <div class="form-group">
                                 <label>Diterima Tanggal</label>
-                                <input type="date" name="Diterima_Tanggal">
+                                <input type="date" name="Diterima_Tanggal" onclick="this.showPicker()">
                             </div>
                             <div class="form-group">
                                 <label>Tanggal Masuk</label>
-                                <input type="date" name="Tanggal_Masuk">
+                                <input type="date" name="Tanggal_Masuk" onclick="this.showPicker()">
                             </div>
                             <div class="form-group">
                                 <label>Mutasi Dari (Jika Pindahan)</label>
@@ -379,7 +407,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Tgl Mutasi Keluar</label>
-                                <input type="date" name="Tgl_Mutasi_Keluar">
+                                <input type="date" name="Tgl_Mutasi_Keluar" onclick="this.showPicker()">
                             </div>
                             <div class="form-group">
                                 <label>Sekolah Tujuan</label>
@@ -394,7 +422,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Tanggal Lulus</label>
-                                <input type="date" name="Tgl_Lulus">
+                                <input type="date" name="Tgl_Lulus" onclick="this.showPicker()">
                             </div>
                             <div class="form-group">
                                 <label>Melanjutkan Ke</label>
@@ -406,7 +434,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Tgl Ijazah Lulus</label>
-                                <input type="date" name="Tgl_Ijazah_Lulus">
+                                <input type="date" name="Tgl_Ijazah_Lulus" onclick="this.showPicker()">
                             </div>
                             <div class="form-group">
                                 <label>Password (Opsional)</label>
@@ -418,6 +446,24 @@
                         <button type="submit" class="btn btn-primary">Simpan Data</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Student Details Modal -->
+        <div id="details-modal" class="modal-overlay hidden">
+            <div class="modal animate-pop">
+                <div class="modal-header">
+                    <h2>Detail Siswa</h2>
+                    <button class="btn btn-secondary" onclick="document.getElementById('details-modal').classList.add('hidden')">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+                <div id="details-content" style="margin-top: 1rem;">
+                    <!-- Details will be injected here -->
+                </div>
+                <div style="margin-top: 2rem; text-align: right;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('details-modal').classList.add('hidden')">Tutup</button>
+                </div>
             </div>
         </div>
 

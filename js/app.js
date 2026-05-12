@@ -8,12 +8,21 @@ function getAvatar(gender) {
 
 // Nilai default untuk pengaturan (agar langsung terisi di Incognito)
 const DEFAULT_SETTINGS = {
+    Instansi: 'SDN INDOEK SISWA',
+    Alamat: 'Jl. Pendidikan No. 123, Lumajang',
     Kota: 'Lumajang',
-    Tanggal: new Date().toISOString().split('T')[0],
     KepalaSekolah: 'SAHRONI, S.Pd.',
-    LogoUrl: 'https://i.ibb.co.com/KjmVNfP3/LOGO-MI-LABRUK-MINM.png',
-    ApiUrl: ''
+    Tanggal: getLocalDateString(),
+    LogoUrl: 'https://i.ibb.co.com/KjmVNfP3/LOGO-MI-LABRUK-MINM.png'
 };
+
+function getLocalDateString() {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 // State management
 let state = {
@@ -32,7 +41,9 @@ let state = {
 // Date Formatter
 function formatDateIndo(dateStr) {
     if (!dateStr || dateStr === '-') return '-';
-    const date = new Date(dateStr);
+    // Clean ISO string if needed
+    const cleanDateStr = typeof dateStr === 'string' && dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    const date = new Date(cleanDateStr);
     if (isNaN(date.getTime())) return dateStr;
 
     const months = [
@@ -73,9 +84,19 @@ function checkAuth() {
         authView.classList.add('hidden');
         document.getElementById('current-user').innerText = `Logged in as: ${state.user.role === 'admin' ? 'Admin' : state.user.student.NamaLengkap}`;
 
-        // Hide admin-only elements if student
-        if (state.user.role !== 'admin') {
+        // Visibility based on role
+        if (state.user.role === 'admin') {
+            document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+            document.querySelectorAll('.student-only').forEach(el => el.classList.add('hidden'));
+        } else {
             document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.student-only').forEach(el => el.classList.remove('hidden'));
+            
+            // Redirect students away from admin views
+            if (state.view === 'dashboard' || state.view === 'students') {
+                state.view = 'profile';
+                localStorage.setItem('active_view', 'profile');
+            }
         }
     }
 }
@@ -138,9 +159,22 @@ async function loadSettings() {
 
 function populateSettingsUI(settings) {
     if (document.getElementById('set-kota')) document.getElementById('set-kota').value = settings.Kota || '';
-    if (document.getElementById('set-tanggal')) document.getElementById('set-tanggal').value = settings.Tanggal || '';
+    
+    if (document.getElementById('set-tanggal')) {
+        let tgl = settings.Tanggal || '';
+        // Konversi ke YYYY-MM-DD jika formatnya DD-MM-YYYY agar muncul di input date
+        if (tgl.includes('-')) {
+            let parts = tgl.split('-');
+            if (parts[0].length === 2) { // Jika DD-MM-YYYY
+                tgl = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+        }
+        document.getElementById('set-tanggal').value = tgl;
+    }
+    
     if (document.getElementById('set-kepala-sekolah')) document.getElementById('set-kepala-sekolah').value = settings.KepalaSekolah || '';
     if (document.getElementById('set-logo-url')) document.getElementById('set-logo-url').value = settings.LogoUrl || '';
+    if (document.getElementById('set-admin-password')) document.getElementById('set-admin-password').value = settings.AdminPassword || '';
 }
 
 function updateConfigVisibility() {
@@ -194,32 +228,50 @@ async function loadStudents(forceRefresh = false) {
 }
 
 function applyFiltersAndRender() {
-    // 1. Filtering secara lokal
-    let filtered = state.allStudents;
-    if (state.search) {
-        const q = state.search.toLowerCase();
-        filtered = state.allStudents.filter(s =>
-            s.NamaLengkap.toLowerCase().includes(q) ||
-            s.NIS.toString().includes(q) ||
-            (s.Kelas && s.Kelas.toLowerCase().includes(q))
-        );
-    }
+    const q = document.getElementById('search-input').value.toLowerCase();
 
-    // 2. Update Total & Pagination info
+    const filtered = state.allStudents.filter(s => {
+        return !q ||
+            (s.NamaLengkap && s.NamaLengkap.toLowerCase().includes(q)) ||
+            (s.NIS && s.NIS.toString().includes(q)) ||
+            (s.Kelas && s.Kelas.toLowerCase().includes(q));
+    });
+
+    // Update Dashboard Stats (from total dataset)
+    const elTotal = document.getElementById('total-students');
+    const elMale = document.getElementById('total-male');
+    const elFemale = document.getElementById('total-female');
+
+    if (elTotal) elTotal.innerText = state.allStudents.length;
+    if (elMale) elMale.innerText = state.allStudents.filter(s => s.Jenis_Kelamin === 'L').length;
+    if (elFemale) elFemale.innerText = state.allStudents.filter(s => s.Jenis_Kelamin === 'P').length;
+
+    // Pagination info
     const total = filtered.length;
     const totalPages = Math.ceil(total / state.limit) || 1;
 
-    // Pastikan halaman tidak out of bounds
     if (state.page > totalPages) state.page = totalPages;
     if (state.page < 1) state.page = 1;
 
-    // 3. Slicing untuk halaman aktif
     const offset = (state.page - 1) * state.limit;
     state.students = filtered.slice(offset, offset + state.limit);
 
-    // 4. Render
     renderStudentsTable();
     updatePagination(totalPages);
+}
+
+function renderLoading(show) {
+    const overlay = document.getElementById('loading-overlay');
+    if (!overlay) return;
+
+    if (show) {
+        overlay.classList.remove('hidden');
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.style.opacity = '1', 10);
+    } else {
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.classList.add('hidden'), 300);
+    }
 }
 
 function renderStudentsTable() {
@@ -313,7 +365,12 @@ async function handleLogin(e, role) {
         state.user = { role, student: res.student };
         localStorage.setItem('user', JSON.stringify(state.user));
         checkAuth();
-        initApp();
+        
+        if (role === 'student') {
+            showView('profile');
+        } else {
+            initApp();
+        }
     } else {
         alert(res ? res.error : 'Login gagal');
     }
@@ -341,18 +398,84 @@ function showView(view) {
 
     document.getElementById('dashboard-view').classList.add('hidden');
     document.getElementById('students-view').classList.add('hidden');
+    document.getElementById('profile-view').classList.add('hidden');
+    
     const targetView = document.getElementById(`${view}-view`);
-    if (targetView) targetView.classList.remove('hidden');
+    if (targetView) {
+        targetView.classList.remove('hidden');
+        // Trigger animation
+        targetView.classList.remove('animate-up');
+        void targetView.offsetWidth; // Reflow to restart animation
+        targetView.classList.add('animate-up');
+        
+        if (view === 'profile' && state.user && state.user.student) {
+            renderStudentProfile();
+        }
+    }
 
     refreshData();
     if (window.innerWidth <= 768) {
-        const sidebar = document.getElementById('sidebar');
-        if (sidebar.classList.contains('open')) toggleSidebar();
+        toggleSidebar(false);
     }
 }
 
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('open');
+function renderStudentProfile() {
+    const student = state.user.student;
+    const content = document.getElementById('profile-content');
+    
+    let html = `
+        <div class="card animate-pop" style="padding: 2rem;">
+            <div style="display: flex; gap: 2rem; flex-wrap: wrap; align-items: flex-start;">
+                <div style="text-align: center;">
+                    <img src="${student.Foto_URL || getAvatar(student.Jenis_Kelamin)}" 
+                         style="width: 150px; height: 150px; border-radius: 12px; object-fit: cover; border: 4px solid var(--primary); box-shadow: var(--shadow-lg);">
+                    <h2 style="margin-top: 1rem; color: var(--primary);">${student.NamaLengkap}</h2>
+                    <p style="color: var(--text-muted); font-weight: 600;">NIS: ${student.NIS}</p>
+                </div>
+                <div style="flex: 1; min-width: 300px;">
+                    <div class="grid-2">
+    `;
+    
+    for (let key in student) {
+        if (key === 'Password' || key === 'Foto_URL') continue;
+        let val = student[key];
+        if (key.toLowerCase().includes('tanggal') || key.toLowerCase().includes('tgl')) {
+            val = formatDateIndo(val);
+        }
+        html += `
+            <div style="padding: 10px; border-bottom: 1px solid var(--border);">
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">${key.replace(/_/g, ' ')}</div>
+                <div style="font-size: 0.95rem; color: var(--text-main); font-weight: 500;">${val || '-'}</div>
+            </div>
+        `;
+    }
+    
+    html += `
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    content.innerHTML = html;
+}
+
+function toggleSidebar(force) {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobile-overlay');
+
+    if (typeof force === 'boolean') {
+        if (force) {
+            sidebar.classList.add('open');
+            overlay.classList.add('show');
+        } else {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('show');
+        }
+    } else {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('show');
+    }
 }
 
 // Config Actions
@@ -375,6 +498,7 @@ function saveConfig() {
         Tanggal: document.getElementById('set-tanggal').value,
         KepalaSekolah: document.getElementById('set-kepala-sekolah').value,
         LogoUrl: document.getElementById('set-logo-url').value,
+        AdminPassword: document.getElementById('set-admin-password').value || state.settings.AdminPassword,
         ApiUrl: url
     };
 
@@ -399,7 +523,16 @@ function openStudentModal() {
     document.getElementById('modal-title').innerText = 'Tambah Siswa';
     document.getElementById('student-form').reset();
     switchModalTab('tab-diri');
-    document.getElementById('student-modal').classList.remove('hidden');
+    const modal = document.getElementById('student-modal');
+    modal.classList.remove('hidden');
+
+    // Trigger pop animation
+    const content = modal.querySelector('.modal');
+    if (content) {
+        content.classList.remove('animate-pop');
+        void content.offsetWidth;
+        content.classList.add('animate-pop');
+    }
 }
 
 function closeStudentModal() {
@@ -429,11 +562,19 @@ function editStudent(nis) {
         for (let key in student) {
             if (form.elements[key]) {
                 let val = student[key];
-                if (key === 'Tanggal_Lahir' && val && val.includes('T')) val = val.split('T')[0];
                 form.elements[key].value = val;
             }
         }
-        document.getElementById('student-modal').classList.remove('hidden');
+        const modal = document.getElementById('student-modal');
+        modal.classList.remove('hidden');
+
+        // Trigger pop animation
+        const content = modal.querySelector('.modal');
+        if (content) {
+            content.classList.remove('animate-pop');
+            void content.offsetWidth;
+            content.classList.add('animate-pop');
+        }
     }
 }
 
@@ -559,13 +700,27 @@ function printStudent(nis) {
 }
 
 function viewDetails(nis) {
-    const student = state.students.find(s => s.NIS.toString() === nis.toString());
+    const student = state.allStudents.find(s => s.NIS.toString() === nis.toString());
     if (student) {
-        let details = "";
+        const content = document.getElementById('details-content');
+        let html = '<div class="grid-2" style="max-height: 60vh; overflow-y: auto;">';
         for (let key in student) {
-            details += `${key}: ${student[key]}\n`;
+            let val = student[key];
+            // Format dates
+            if (key.toLowerCase().includes('tanggal') || key.toLowerCase().includes('tgl')) {
+                val = formatDateIndo(val);
+            }
+            html += `
+                <div style="padding: 10px; border-bottom: 1px solid var(--border);">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">${key.replace(/_/g, ' ')}</div>
+                    <div style="font-size: 0.95rem; color: var(--text-main);">${val || '-'}</div>
+                </div>
+            `;
         }
-        alert(details);
+        html += '</div>';
+        content.innerHTML = html;
+        document.getElementById('details-modal').classList.remove('hidden');
+        lucide.createIcons();
     }
 }
 
