@@ -1,3 +1,20 @@
+const AVATAR_MALE = 'https://www.w3schools.com/howto/img_avatar.png';
+const AVATAR_FEMALE = 'https://www.w3schools.com/howto/img_avatar2.png';
+
+function getAvatar(gender) {
+    if (gender === 'P' || gender === 'Perempuan') return AVATAR_FEMALE;
+    return AVATAR_MALE;
+}
+
+// Nilai default untuk pengaturan (agar langsung terisi di Incognito)
+const DEFAULT_SETTINGS = {
+    Kota: 'Lumajang',
+    Tanggal: new Date().toISOString().split('T')[0],
+    KepalaSekolah: 'SAHRONI, S.Pd.',
+    LogoUrl: 'https://via.placeholder.com/80',
+    ApiUrl: ''
+};
+
 // State management
 let state = {
     user: JSON.parse(localStorage.getItem('user')) || null,
@@ -8,7 +25,7 @@ let state = {
     limit: 20,
     search: '',
     loading: false,
-    settings: {}
+    settings: { ...DEFAULT_SETTINGS }
 };
 
 // Date Formatter
@@ -32,11 +49,13 @@ function formatDateIndo(dateStr) {
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
+    loadSettings(); // Panggil segera agar data tanda tangan terisi di Incognito
     if (state.user) {
         initApp();
     }
     // Load local config
     document.getElementById('api-url').value = API.getUrl();
+    updateConfigVisibility();
 });
 
 function checkAuth() {
@@ -85,23 +104,48 @@ async function loadDashboardStats() {
 }
 
 async function loadSettings() {
+    // Isi field dengan nilai default dulu (agar tidak kosong saat loading)
+    populateSettingsUI(state.settings);
+
     if (!API.getUrl()) return;
-    const res = await API.request('getSettings');
-    if (res) {
-        state.settings = res;
-        document.getElementById('set-kota').value = res.Kota || '';
-        document.getElementById('set-tanggal').value = res.Tanggal || '';
-        document.getElementById('set-kepala-sekolah').value = res.KepalaSekolah || '';
-        document.getElementById('set-logo-url').value = res.LogoUrl || '';
-        
-        // Sync API URL from sheet if exists
-        if (res.ApiUrl && res.ApiUrl !== API.getUrl()) {
-            API.setUrl(res.ApiUrl);
-            document.getElementById('api-url').value = res.ApiUrl;
+    
+    try {
+        const res = await API.request('getSettings');
+        if (res) {
+            // Gabungkan hasil API dengan default (untuk jaga-jaga jika ada field kosong di API)
+            state.settings = { ...DEFAULT_SETTINGS, ...res };
+            populateSettingsUI(state.settings);
+            
+            // Sinkronkan API URL dari sheet jika ada dan berbeda
+            if (res.ApiUrl && res.ApiUrl !== API.getUrl()) {
+                API.setUrl(res.ApiUrl);
+                document.getElementById('api-url').value = res.ApiUrl;
+            }
+            return true;
         }
-        return true;
+    } catch (e) {
+        console.error("Gagal memuat pengaturan:", e);
     }
     return false;
+}
+
+function populateSettingsUI(settings) {
+    if (document.getElementById('set-kota')) document.getElementById('set-kota').value = settings.Kota || '';
+    if (document.getElementById('set-tanggal')) document.getElementById('set-tanggal').value = settings.Tanggal || '';
+    if (document.getElementById('set-kepala-sekolah')) document.getElementById('set-kepala-sekolah').value = settings.KepalaSekolah || '';
+    if (document.getElementById('set-logo-url')) document.getElementById('set-logo-url').value = settings.LogoUrl || '';
+}
+
+function updateConfigVisibility() {
+    const hasUrl = !!API.getUrl();
+    const loginLink = document.getElementById('login-config-link');
+    if (loginLink) {
+        if (hasUrl) {
+            loginLink.classList.add('hidden');
+        } else {
+            loginLink.classList.remove('hidden');
+        }
+    }
 }
 
 async function checkConnection() {
@@ -141,26 +185,29 @@ async function loadStudents() {
 
 function renderStudentsTable() {
     const body = document.getElementById('students-body');
-    body.innerHTML = state.students.map(s => `
-        <tr>
-            <td><img src="${s.Foto_URL || 'https://via.placeholder.com/40'}" class="student-thumb" onerror="this.src='https://via.placeholder.com/40'"></td>
-            <td>${s.NIS}</td>
-            <td>${s.NamaLengkap}</td>
-            <td>${s.Jenis_Kelamin}</td>
-            <td>${s.Kelas || '-'}</td>
-            <td>${s.TempatLahir || '-'}, ${formatDateIndo(s.Tanggal_Lahir)}</td>
-            <td>
-                <div style="display: flex; gap: 5px;">
-                    <button class="btn btn-secondary" onclick="viewDetails('${s.NIS}')" title="Detail"><i data-lucide="eye" style="width:14px"></i></button>
-                    ${state.user.role === 'admin' ? `
-                        <button class="btn btn-secondary" onclick="editStudent('${s.NIS}')" title="Edit"><i data-lucide="edit-2" style="width:14px"></i></button>
-                        <button class="btn btn-secondary" style="color: var(--danger)" onclick="deleteStudent('${s.NIS}')" title="Hapus"><i data-lucide="trash-2" style="width:14px"></i></button>
-                    ` : ''}
-                    <button class="btn btn-secondary" onclick="printStudent('${s.NIS}')" title="Cetak"><i data-lucide="printer" style="width:14px"></i></button>
-                </div>
-            </td>
-        </tr>
-    `).join('');
+    body.innerHTML = state.students.map(s => {
+        const avatar = getAvatar(s.Jenis_Kelamin);
+        return `
+            <tr>
+                <td><img src="${s.Foto_URL || avatar}" class="student-thumb" onerror="this.src='${avatar}'"></td>
+                <td>${s.NIS}</td>
+                <td>${s.NamaLengkap}</td>
+                <td>${s.Jenis_Kelamin}</td>
+                <td>${s.Kelas || '-'}</td>
+                <td>${s.TempatLahir || '-'}, ${formatDateIndo(s.Tanggal_Lahir)}</td>
+                <td>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="btn btn-secondary" onclick="viewDetails('${s.NIS}')" title="Detail"><i data-lucide="eye" style="width:14px"></i></button>
+                        ${state.user.role === 'admin' ? `
+                            <button class="btn btn-secondary" onclick="editStudent('${s.NIS}')" title="Edit"><i data-lucide="edit-2" style="width:14px"></i></button>
+                            <button class="btn btn-secondary" style="color: var(--danger)" onclick="deleteStudent('${s.NIS}')" title="Hapus"><i data-lucide="trash-2" style="width:14px"></i></button>
+                        ` : ''}
+                        <button class="btn btn-secondary" onclick="printStudent('${s.NIS}')" title="Cetak"><i data-lucide="printer" style="width:14px"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
     lucide.createIcons();
 }
 
@@ -452,7 +499,16 @@ function printStudent(nis) {
 
     // Footer & Header info
     document.getElementById('print-logo').src = state.settings.LogoUrl || 'https://via.placeholder.com/80';
-    document.getElementById('print-foto').src = student.Foto_URL || 'https://via.placeholder.com/150';
+    
+    const printFoto = document.getElementById('print-foto');
+    if (student.Foto_URL) {
+        printFoto.src = student.Foto_URL;
+        printFoto.style.display = 'block';
+    } else {
+        printFoto.src = '';
+        printFoto.style.display = 'none';
+    }
+
     document.getElementById('print-kota').innerText = state.settings.Kota || 'Jakarta';
     document.getElementById('print-tanggal-ttd').innerText = formatDateIndo(state.settings.Tanggal) || '';
     document.getElementById('print-nama-ks').innerText = state.settings.KepalaSekolah || '';
